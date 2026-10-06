@@ -4,20 +4,22 @@ import api from '../services/api';
 export default function Proveedores() {
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [busqueda, setBusqueda] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
   const [formData, setFormData] = useState({
-    proveedorRazonSocial: '',
-    proveedorCUIT: '',
-    proveedorMail: '',
+    razonSocial: '',
+    cuit: '',
+    email: '',
+    telefono: '',
+    direccion: '',
   });
 
   const fetchProveedores = async () => {
     try {
       setLoading(true);
       const res = await api.get('/proveedores');
-      setProveedores(res.data);
+      setProveedores(res.data || []);
     } catch (error) {
       console.error('Error al cargar proveedores:', error);
     } finally {
@@ -31,15 +33,24 @@ export default function Proveedores() {
 
   const handleOpenModal = (prov = null) => {
     if (prov) {
-      setEditingId(prov.proveedorId || prov.id);
+      const id = prov.proveedorId || prov.id;
+      setEditingId(id);
       setFormData({
-        proveedorRazonSocial: prov.proveedorRazonSocial || '',
-        proveedorCUIT: prov.proveedorCUIT || prov.proveedorCuit || '',
-        proveedorMail: prov.proveedorMail || '',
+        razonSocial: prov.proveedorRazonSocial || prov.razonSocial || '',
+        cuit: prov.proveedorCuit || prov.cuit || '',
+        email: prov.proveedorEmail || prov.email || '',
+        telefono: prov.proveedorTelefono || prov.telefono || '',
+        direccion: prov.proveedorDireccion || prov.direccion || '',
       });
     } else {
       setEditingId(null);
-      setFormData({ proveedorRazonSocial: '', proveedorCUIT: '', proveedorMail: '' });
+      setFormData({
+        razonSocial: '',
+        cuit: '',
+        email: '',
+        telefono: '',
+        direccion: '',
+      });
     }
     setIsModalOpen(true);
   };
@@ -52,109 +63,103 @@ export default function Proveedores() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
-      proveedorRazonSocial: formData.proveedorRazonSocial.trim(),
-      proveedorCUIT: String(formData.proveedorCUIT).trim(),
-      proveedorMail: formData.proveedorMail.trim(),
+      proveedorRazonSocial: formData.razonSocial.trim(),
+      razonSocial: formData.razonSocial.trim(),
+      proveedorCuit: formData.cuit.trim(),
+      cuit: formData.cuit.trim(),
+      proveedorEmail: formData.email.trim(),
+      email: formData.email.trim(),
+      proveedorTelefono: formData.telefono.trim(),
+      telefono: formData.telefono.trim(),
+      proveedorDireccion: formData.direccion.trim(),
+      direccion: formData.direccion.trim(),
     };
 
     try {
       if (editingId) {
         await api.put(`/proveedores/${editingId}`, payload);
+        alert('Proveedor actualizado con éxito');
       } else {
         await api.post('/proveedores', payload);
+        alert('Proveedor registrado con éxito');
       }
       fetchProveedores();
       handleCloseModal();
     } catch (error) {
       console.error('Error al guardar proveedor:', error.response?.data || error.message);
-      alert('Error al guardar los datos del proveedor');
+      alert('Error al guardar: ' + (error.response?.data?.message || error.response?.data?.error || 'Verifica los datos'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este proveedor?')) return;
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este proveedor?')) return;
     try {
       await api.delete(`/proveedores/${id}`);
       fetchProveedores();
     } catch (error) {
       console.error('Error al eliminar proveedor:', error);
+      alert('No se pudo eliminar el proveedor');
     }
   };
 
-  const filteredProveedores = proveedores.filter((p) => {
-    const cuit = p.proveedorCUIT || p.proveedorCuit || '';
-    return (
-      p.proveedorRazonSocial?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      cuit.includes(busqueda) ||
-      p.proveedorMail?.toLowerCase().includes(busqueda.toLowerCase())
-    );
-  });
-
   return (
-    <div className="p-8 bg-[#EFEFEF] min-h-screen text-slate-800 font-sans">
+    <div className="p-8 bg-[#EFEFEF] min-h-screen font-sans text-slate-800">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Proveedores</h1>
-          <p className="text-sm text-gray-500">Parametrización y registro de entidades comerciales</p>
+          <p className="text-sm text-gray-500">Gestión de proveedores e información fiscal</p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-full shadow-md transition-all duration-200 flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-full shadow-md transition-all flex items-center gap-2"
         >
           <span>+</span> Nuevo Proveedor
         </button>
       </div>
 
-      <div className="mb-6 relative w-72">
-        <input
-          type="text"
-          placeholder="Buscar Razón Social, CUIT..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full py-2 px-4 pr-10 rounded-full border border-gray-300 bg-white text-sm focus:outline-none shadow-sm"
-        />
-        <span className="absolute right-3 top-2.5 text-gray-400 text-xs">🔍</span>
-      </div>
-
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-500">Cargando proveedores...</div>
-        ) : filteredProveedores.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">No se encontraron proveedores registrados.</div>
+        ) : proveedores.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">No hay proveedores registrados.</div>
         ) : (
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-slate-50 border-b border-gray-200 text-slate-600 font-semibold">
-              <tr>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-gray-100 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
                 <th className="p-4">Razón Social</th>
-                <th className="p-4">CUIT / Id. Fiscal</th>
-                <th className="p-4">Correo Autorizado</th>
+                <th className="p-4">CUIT</th>
+                <th className="p-4">Email</th>
+                <th className="p-4">Teléfono</th>
                 <th className="p-4 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredProveedores.map((prov) => {
-                const provId = prov.proveedorId || prov.id;
-                const provCuit = prov.proveedorCUIT || prov.proveedorCuit;
+            <tbody className="divide-y divide-gray-100 text-sm">
+              {proveedores.map((p) => {
+                const id = p.proveedorId || p.id;
+                const razonSocial = p.proveedorRazonSocial || p.razonSocial;
+                const cuit = p.proveedorCuit || p.cuit;
+                const email = p.proveedorEmail || p.email;
+                const telefono = p.proveedorTelefono || p.telefono;
+
                 return (
-                  <tr key={provId} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-4 font-semibold text-slate-800">{prov.proveedorRazonSocial}</td>
-                    <td className="p-4 text-gray-600">{provCuit || '-'}</td>
-                    <td className="p-4 text-gray-600">{prov.proveedorMail || '-'}</td>
+                  <tr key={id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-4 font-semibold text-slate-900">{razonSocial}</td>
+                    <td className="p-4 text-slate-600">{cuit || '-'}</td>
+                    <td className="p-4 text-slate-600">{email || '-'}</td>
+                    <td className="p-4 text-slate-600">{telefono || '-'}</td>
                     <td className="p-4 text-right space-x-2">
                       <button
-                        onClick={() => handleOpenModal(prov)}
-                        className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100"
-                        title="Editar"
+                        onClick={() => handleOpenModal(p)}
+                        className="text-blue-600 hover:text-blue-800 font-semibold text-xs"
                       >
-                        ✏️
+                        Editar
                       </button>
                       <button
-                        onClick={() => handleDelete(provId)}
-                        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
-                        title="Eliminar"
+                        onClick={() => handleDelete(id)}
+                        className="text-rose-600 hover:text-rose-800 font-semibold text-xs"
                       >
-                        🗑️
+                        Eliminar
                       </button>
                     </td>
                   </tr>
@@ -180,38 +185,50 @@ export default function Proveedores() {
                 <input
                   type="text"
                   required
-                  value={formData.proveedorRazonSocial}
-                  onChange={(e) => setFormData({ ...formData, proveedorRazonSocial: e.target.value })}
+                  value={formData.razonSocial}
+                  onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
                   className="w-full p-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-blue-500"
-                  placeholder="Ej. Distribuidora Logística S.A."
+                  placeholder="Ej. Distribuidora S.A."
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  CUIT / Identificador Fiscal
+                  CUIT / Nro. Fiscal *
                 </label>
                 <input
                   type="text"
                   required
-                  value={formData.proveedorCUIT}
-                  onChange={(e) => setFormData({ ...formData, proveedorCUIT: e.target.value })}
+                  value={formData.cuit}
+                  onChange={(e) => setFormData({ ...formData, cuit: e.target.value })}
                   className="w-full p-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-blue-500"
-                  placeholder="30-12345678-9"
+                  placeholder="Ej. 30-12345678-9"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Correo Electrónico Autorizado
+                  Correo Electrónico
                 </label>
                 <input
                   type="email"
-                  required
-                  value={formData.proveedorMail}
-                  onChange={(e) => setFormData({ ...formData, proveedorMail: e.target.value })}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full p-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-blue-500"
-                  placeholder="facturacion@proveedor.com"
+                  placeholder="ventas@proveedor.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Teléfono
+                </label>
+                <input
+                  type="text"
+                  value={formData.telefono}
+                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-blue-500"
+                  placeholder="11-4433-2211"
                 />
               </div>
 
@@ -227,7 +244,7 @@ export default function Proveedores() {
                   type="submit"
                   className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md"
                 >
-                  Guardar
+                  {editingId ? 'Guardar Cambios' : 'Crear Proveedor'}
                 </button>
               </div>
             </form>
